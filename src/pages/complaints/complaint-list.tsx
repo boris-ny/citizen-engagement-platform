@@ -1,25 +1,57 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 
 export function ComplaintList() {
   const complaints = useQuery(api.complaints.listUserComplaints) ?? [];
   const addResponse = useMutation(api.complaints.addResponse);
+  const generateUploadUrl = useMutation(api.complaints.generateUploadUrl);
   const [responseText, setResponseText] = useState('');
   const [selectedComplaint, setSelectedComplaint] = useState<string | null>(
     null
   );
+  const [file, setFile] = useState<File | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   async function handleSubmitResponse(complaintId: string) {
     try {
+      let attachmentId = undefined;
+      let attachmentName = undefined;
+
+      if (file) {
+        // Step 1: Get a short-lived upload URL
+        const postUrl = await generateUploadUrl();
+
+        // Step 2: POST the file to the URL
+        const result = await fetch(postUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+
+        if (!result.ok) {
+          throw new Error('Failed to upload file');
+        }
+
+        const { storageId } = await result.json();
+        attachmentId = storageId;
+        attachmentName = file.name;
+      }
+
       await addResponse({
         complaintId: complaintId as any,
         message: responseText,
+        attachmentId,
+        attachmentName,
       });
       setResponseText('');
       setSelectedComplaint(null);
+      setFile(null);
+      if (fileInput.current) {
+        fileInput.current.value = '';
+      }
       toast.success('Response submitted successfully');
     } catch (error: any) {
       toast.error('Failed to submit response: ' + error.message);
@@ -74,6 +106,17 @@ export function ComplaintList() {
                     {response.responderName}
                   </p>
                   <p className="text-sm">{response.message}</p>
+                  {response.attachmentName && response.attachmentUrl && (
+                    <p className="text-sm mt-1">
+                      <a
+                        href={response.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:text-indigo-800">
+                        📎 {response.attachmentName}
+                      </a>
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -88,6 +131,15 @@ export function ComplaintList() {
                   rows={3}
                   placeholder="Type your response..."
                 />
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInput}
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="mt-1 block w-full text-sm"
+                    accept="image/*,application/pdf"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleSubmitResponse(complaint._id)}
@@ -95,7 +147,13 @@ export function ComplaintList() {
                     Submit Response
                   </button>
                   <button
-                    onClick={() => setSelectedComplaint(null)}
+                    onClick={() => {
+                      setSelectedComplaint(null);
+                      setFile(null);
+                      if (fileInput.current) {
+                        fileInput.current.value = '';
+                      }
+                    }}
                     className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
                     Cancel
                   </button>

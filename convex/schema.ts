@@ -27,6 +27,8 @@ const applicationTables = {
     responderName: v.string(),
     message: v.string(),
     isOfficial: v.boolean(),
+    attachmentId: v.optional(v.id("_storage")),
+    attachmentName: v.optional(v.string()),
   }).index("by_complaint", ["complaintId"]),
 
   officials: defineTable({

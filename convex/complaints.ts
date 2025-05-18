@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const createComplaint = mutation({
@@ -55,10 +55,20 @@ export const listUserComplaints = query({
           attachmentUrl = await ctx.storage.getUrl(complaint.attachmentId);
         }
 
+        const responsesWithUrls = await Promise.all(
+          responses.map(async (response) => {
+            let attachmentUrl = null;
+            if (response.attachmentId) {
+              attachmentUrl = await ctx.storage.getUrl(response.attachmentId);
+            }
+            return { ...response, attachmentUrl };
+          })
+        );
+
         return {
           ...complaint,
           category,
-          responses,
+          responses: responsesWithUrls,
           attachmentUrl,
         };
       })
@@ -76,6 +86,8 @@ export const addResponse = mutation({
   args: {
     complaintId: v.id("complaints"),
     message: v.string(),
+    attachmentId: v.optional(v.id("_storage")),
+    attachmentName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -90,7 +102,10 @@ export const addResponse = mutation({
 
     // Add the response
     await ctx.db.insert("responses", {
-      ...args,
+      complaintId: args.complaintId,
+      message: args.message,
+      attachmentId: args.attachmentId,
+      attachmentName: args.attachmentName,
       responderName: official ? `${official.title} - ${user?.name ?? "Official"}` : user?.name ?? "Anonymous",
       isOfficial: !!official,
     });
@@ -163,11 +178,21 @@ export const listCategoryComplaints = query({
           attachmentUrl = await ctx.storage.getUrl(complaint.attachmentId);
         }
 
+        const responsesWithUrls = await Promise.all(
+          responses.map(async (response) => {
+            let attachmentUrl = null;
+            if (response.attachmentId) {
+              attachmentUrl = await ctx.storage.getUrl(response.attachmentId);
+            }
+            return { ...response, attachmentUrl };
+          })
+        );
+
         return {
           ...complaint,
           category,
           submitter: submitter?.name ?? "Anonymous",
-          responses,
+          responses: responsesWithUrls,
           attachmentUrl,
         };
       })
