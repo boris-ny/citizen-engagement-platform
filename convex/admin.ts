@@ -92,7 +92,6 @@ export const addCategory = mutation({
   args: {
     name: v.string(),
     description: v.string(),
-    agencyEmail: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

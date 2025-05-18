@@ -17,7 +17,6 @@ export function AdminDashboard() {
   // New category form state
   const [categoryName, setCategoryName] = useState('');
   const [categoryDescription, setCategoryDescription] = useState('');
-  const [agencyEmail, setAgencyEmail] = useState('');
 
   async function handleAddOfficial(e: React.FormEvent) {
     e.preventDefault();
@@ -42,11 +41,9 @@ export function AdminDashboard() {
       await addCategory({
         name: categoryName,
         description: categoryDescription,
-        agencyEmail,
       });
       setCategoryName('');
       setCategoryDescription('');
-      setAgencyEmail('');
       toast.success('Category added successfully');
     } catch (error: any) {
       toast.error(error.message);
@@ -79,18 +76,6 @@ export function AdminDashboard() {
               onChange={(e) => setCategoryDescription(e.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               rows={3}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Agency Email
-            </label>
-            <input
-              type="email"
-              value={agencyEmail}
-              onChange={(e) => setAgencyEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               required
             />
           </div>
@@ -164,9 +149,6 @@ export function AdminDashboard() {
                   <h3 className="text-lg font-medium">{category.name}</h3>
                   <p className="text-gray-600">{category.description}</p>
                 </div>
-                <span className="text-sm text-gray-500">
-                  {category.agencyEmail}
-                </span>
               </div>
             </div>
           ))}

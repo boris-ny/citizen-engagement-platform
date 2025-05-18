@@ -6,7 +6,6 @@ const applicationTables = {
   categories: defineTable({
     name: v.string(),
     description: v.string(),
-    agencyEmail: v.string(),
   }),
 
   complaints: defineTable({
