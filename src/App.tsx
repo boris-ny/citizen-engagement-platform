@@ -92,8 +92,8 @@ function Content({
           {isAdmin
             ? 'Admin Dashboard'
             : isOfficial
-              ? 'Official Dashboard'
-              : 'Citizen Engagement System'}
+              ? 'Agent Dashboard'
+              : 'Citizen Engagement Portal'}
         </h1>
 
         <Authenticated>

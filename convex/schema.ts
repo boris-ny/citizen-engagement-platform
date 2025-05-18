@@ -15,6 +15,8 @@ const applicationTables = {
     status: v.string(),
     submitterId: v.id("users"),
     location: v.string(),
+    attachmentId: v.optional(v.id("_storage")),
+    attachmentName: v.optional(v.string()),
   })
     .index("by_submitter", ["submitterId"])
     .index("by_category", ["categoryId"])

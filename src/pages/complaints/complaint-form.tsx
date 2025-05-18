@@ -1,159 +1,148 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
-import type { FormEvent } from 'react';
+import { type FormEvent, useState, useRef } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { toast } from 'sonner';
-import {
-  AlertTriangleIcon,
-  FileTextIcon,
-  MapPinIcon,
-  SendIcon,
-  TagIcon,
-  HelpCircleIcon,
-} from 'lucide-react';
 
 export function ComplaintForm() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [location, setLocation] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const categories = useQuery(api.complaints.listCategories) ?? [];
   const createComplaint = useMutation(api.complaints.createComplaint);
+  const generateUploadUrl = useMutation(api.complaints.generateUploadUrl);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setIsSubmitting(true);
-
     try {
+      let attachmentId = undefined;
+      let attachmentName = undefined;
+
+      if (file) {
+        // Step 1: Get a short-lived upload URL
+        const postUrl = await generateUploadUrl();
+
+        // Step 2: POST the file to the URL
+        const result = await fetch(postUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+
+        if (!result.ok) {
+          throw new Error('Failed to upload file');
+        }
+
+        const { storageId } = await result.json();
+        attachmentId = storageId;
+        attachmentName = file.name;
+      }
+
+      // Step 3: Create the complaint with the file ID if one was uploaded
       await createComplaint({
         title,
         description,
         categoryId: categoryId as any,
         location,
+        attachmentId,
+        attachmentName,
       });
+
       setTitle('');
       setDescription('');
       setCategoryId('');
       setLocation('');
-      toast.success('Complaint submitted successfully', {
-        description: 'Your complaint has been recorded and will be reviewed.',
-      });
+      setFile(null);
+      if (fileInput.current) {
+        fileInput.current.value = '';
+      }
+      toast.success('Complaint submitted successfully');
     } catch (error: any) {
-      toast.error('Submission failed', {
-        description: error.message || 'Please try again later',
-      });
-    } finally {
-      setIsSubmitting(false);
+      toast.error(`Failed to submit complaint: ${error.message}`);
     }
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-6 text-white">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <AlertTriangleIcon className="h-6 w-6" />
-          Submit a Complaint
-        </h2>
-        <p className="text-indigo-100 mt-1">
-          Report an issue in your community
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="p-6 space-y-5">
+    <div className="bg-white p-6 rounded-lg shadow">
+      <h2 className="text-2xl font-semibold mb-4">Submit a Complaint</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-            <FileTextIcon className="h-4 w-4 text-slate-500" /> Title
+          <label className="block text-sm font-medium text-gray-700">
+            Title
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2.5"
-            placeholder="Brief summary of the issue"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             required
           />
         </div>
-
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-            <TagIcon className="h-4 w-4 text-slate-500" /> Category
+          <label className="block text-sm font-medium text-gray-700">
+            Category
           </label>
-          <div className="relative">
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 appearance-none px-4 py-2.5"
-              required>
-              <option value="">Select a category</option>
-              {categories.map((category) => (
-                <option key={category._id} value={category._id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </div>
-          </div>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+            required>
+            <option value="">Select a category</option>
+            {categories.map((category) => (
+              <option key={category._id} value={category._id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
         </div>
-
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-            <MapPinIcon className="h-4 w-4 text-slate-500" /> Location
+          <label className="block text-sm font-medium text-gray-700">
+            Location
           </label>
           <input
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2.5"
-            placeholder="Street address or landmark"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             required
           />
         </div>
-
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-            <HelpCircleIcon className="h-4 w-4 text-slate-500" /> Description
+          <label className="block text-sm font-medium text-gray-700">
+            Description
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2.5"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             rows={4}
-            placeholder="Provide details about the issue..."
             required
           />
         </div>
-
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Attachment
+          </label>
+          <input
+            type="file"
+            ref={fileInput}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="mt-1 block w-full"
+            accept="image/*,application/pdf"
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            Upload images or PDF documents related to your complaint
+          </p>
+        </div>
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 text-white font-medium rounded-md py-3 px-4 flex items-center justify-center transition gap-2">
-          {isSubmitting ? (
-            <>
-              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Submitting...
-            </>
-          ) : (
-            <>
-              <SendIcon className="h-4 w-4" />
-              Submit Complaint
-            </>
-          )}
+          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">
+          Submit Complaint
         </button>
       </form>
     </div>

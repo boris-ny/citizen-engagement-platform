@@ -8,6 +8,8 @@ export const createComplaint = mutation({
     description: v.string(),
     categoryId: v.id("categories"),
     location: v.string(),
+    attachmentId: v.optional(v.id("_storage")),
+    attachmentName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -18,6 +20,15 @@ export const createComplaint = mutation({
       submitterId: userId,
       status: "pending",
     });
+  },
+});
+
+export const generateUploadUrl = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    return await ctx.storage.generateUploadUrl();
   },
 });
 
@@ -38,7 +49,18 @@ export const listUserComplaints = query({
           .query("responses")
           .withIndex("by_complaint", (q) => q.eq("complaintId", complaint._id))
           .collect();
-        return { ...complaint, category, responses };
+
+        let attachmentUrl = null;
+        if (complaint.attachmentId) {
+          attachmentUrl = await ctx.storage.getUrl(complaint.attachmentId);
+        }
+
+        return {
+          ...complaint,
+          category,
+          responses,
+          attachmentUrl,
+        };
       })
     );
   },
@@ -135,11 +157,18 @@ export const listCategoryComplaints = query({
           .query("responses")
           .withIndex("by_complaint", (q) => q.eq("complaintId", complaint._id))
           .collect();
+
+        let attachmentUrl = null;
+        if (complaint.attachmentId) {
+          attachmentUrl = await ctx.storage.getUrl(complaint.attachmentId);
+        }
+
         return {
           ...complaint,
           category,
           submitter: submitter?.name ?? "Anonymous",
-          responses
+          responses,
+          attachmentUrl,
         };
       })
     );
