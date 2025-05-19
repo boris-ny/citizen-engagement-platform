@@ -6,6 +6,10 @@ A full-stack web application for managing citizen complaints and official respon
 
 The application is deployed using vercel and can be accessed at [Citizen Engagement Portal](https://citizen-engagement-platform.vercel.app/)
 
+## Live Demo Video
+
+[Watch the live demo video here](https://drive.google.com/file/d/1QdZK_89Ustntt5D7H4p2adz2qIxp-cwr/view?usp=sharing)
+
 ## Features
 
 ### For Citizens
